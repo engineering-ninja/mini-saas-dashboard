@@ -1,0 +1,33 @@
+# Full containerized stack: Postgres + the Next.js app.
+# Usage: docker compose -f docker-compose.app.yml up --build
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: minisass
+      POSTGRES_PASSWORD: minisass
+      POSTGRES_DB: minisass
+    volumes:
+      - app-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U minisass -d minisass"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: "postgresql://minisass:minisass@db:5432/minisass?schema=public"
+      JWT_SECRET: "change-me-to-a-long-random-string"
+      RUN_SEED: "true"
+    ports:
+      - "3000:3000"
+
+volumes:
+  app-db-data:
