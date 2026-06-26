@@ -1,0 +1,24 @@
+# Local development database. The app itself is containerized in Phase 10
+# (docker-compose.app.yml) — this file just runs Postgres for `npm run dev`.
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: mini-sass-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: minisass
+      POSTGRES_PASSWORD: minisass
+      POSTGRES_DB: minisass
+    ports:
+      # Host 5434 -> container 5432 to avoid clashing with other local Postgres instances.
+      - "5434:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U minisass -d minisass"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  db-data:

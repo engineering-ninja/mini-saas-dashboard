@@ -1,0 +1,46 @@
+// Prisma schema for the Mini SaaS Dashboard.
+// Docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/// Lifecycle state of a project. Stored as a Postgres enum.
+enum ProjectStatus {
+  ACTIVE
+  ON_HOLD
+  COMPLETED
+}
+
+/// An account that can sign in and manage its own projects.
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  name         String
+  passwordHash String
+  projects     Project[]
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+/// A project row shown in the dashboard table.
+model Project {
+  id        String        @id @default(cuid())
+  name      String
+  status    ProjectStatus @default(ACTIVE)
+  deadline  DateTime
+  assignee  String // assigned team member (free-text name)
+  budget    Decimal       @db.Decimal(12, 2)
+  owner     User          @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  ownerId   String
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  @@index([ownerId])
+  @@index([status])
+}
