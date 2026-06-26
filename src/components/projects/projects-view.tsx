@@ -7,11 +7,15 @@ import type { ProjectStatusValue } from "@/lib/constants";
 import type { ProjectDTO } from "@/lib/projects";
 import { ProjectsToolbar } from "./projects-toolbar";
 import { ProjectsTable } from "./projects-table";
+import { ProjectFormModal } from "./project-form-modal";
 
 export function ProjectsView() {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<ProjectStatusValue | "">("");
   const debouncedSearch = useDebouncedValue(search, 300);
+
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editing, setEditing] = useState<ProjectDTO | null>(null);
 
   const {
     data: projects,
@@ -23,9 +27,15 @@ export function ProjectsView() {
     search: debouncedSearch,
   });
 
-  // Wired to the add/edit modal and delete flow in later phases.
-  const handleAdd = () => {};
-  const handleEdit = (_project: ProjectDTO) => {};
+  const handleAdd = () => {
+    setEditing(null);
+    setModalOpen(true);
+  };
+  const handleEdit = (project: ProjectDTO) => {
+    setEditing(project);
+    setModalOpen(true);
+  };
+  // Delete flow is wired in the next phase.
   const handleDelete = (_project: ProjectDTO) => {};
 
   const hasFilters = search !== "" || status !== "";
@@ -56,6 +66,13 @@ export function ProjectsView() {
       ) : (
         <ProjectsTable projects={projects} onEdit={handleEdit} onDelete={handleDelete} />
       )}
+
+      <ProjectFormModal
+        open={modalOpen}
+        project={editing}
+        onClose={() => setModalOpen(false)}
+        onSaved={() => {}}
+      />
     </div>
   );
 }
