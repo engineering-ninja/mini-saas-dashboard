@@ -1,5 +1,4 @@
-# Local development database. The app itself is containerized in Phase 10
-# (docker-compose.app.yml) — this file just runs Postgres for `npm run dev`.
+# Local development database for `npm run dev`.
 services:
   db:
     image: postgres:16-alpine

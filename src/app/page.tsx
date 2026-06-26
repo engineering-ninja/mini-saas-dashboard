@@ -1,9 +1,5 @@
 import Link from "next/link";
 
-/**
- * Landing page. In later phases this redirects authenticated users to the
- * dashboard; for now it is a simple entry point so the scaffold renders.
- */
 export default function Home() {
   return (
     <main className="flex flex-1 flex-col items-center justify-center gap-6 p-8 text-center">
