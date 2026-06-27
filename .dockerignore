@@ -2,6 +2,7 @@ node_modules
 .next
 .git
 docs
+screenshots
 coverage
 npm-debug.log*
 .env
