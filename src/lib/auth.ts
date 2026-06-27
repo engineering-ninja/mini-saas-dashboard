@@ -2,15 +2,12 @@ import { cookies } from "next/headers";
 import { SignJWT, jwtVerify } from "jose";
 import bcrypt from "bcryptjs";
 import { prisma } from "./db";
+import { env } from "./env";
 
 const COOKIE_NAME = "auth_token";
 const MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
 
-function getSecret() {
-  const secret = process.env.JWT_SECRET;
-  if (!secret) throw new Error("JWT_SECRET is not set");
-  return new TextEncoder().encode(secret);
-}
+const secret = new TextEncoder().encode(env.JWT_SECRET);
 
 export function hashPassword(password: string) {
   return bcrypt.hash(password, 10);
@@ -26,14 +23,14 @@ export async function signAuthToken(userId: string) {
     .setSubject(userId)
     .setIssuedAt()
     .setExpirationTime(`${MAX_AGE_SECONDS}s`)
-    .sign(getSecret());
+    .sign(secret);
 }
 
 export async function setAuthCookie(token: string) {
   const store = await cookies();
   store.set(COOKIE_NAME, token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
     maxAge: MAX_AGE_SECONDS,
@@ -51,7 +48,7 @@ export async function getCurrentUser() {
   if (!token) return null;
 
   try {
-    const { payload } = await jwtVerify(token, getSecret());
+    const { payload } = await jwtVerify(token, secret);
     if (!payload.sub) return null;
     return prisma.user.findUnique({
       where: { id: payload.sub },

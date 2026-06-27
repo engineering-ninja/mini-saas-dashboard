@@ -9,6 +9,10 @@ FROM node:22-alpine AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+# Placeholders so env validation passes during the build; real values are
+# injected at runtime via the container environment.
+ENV DATABASE_URL="postgresql://placeholder:placeholder@localhost:5432/placeholder"
+ENV JWT_SECRET="build-time-placeholder-secret-change-me-32"
 RUN npx prisma generate && npm run build
 
 FROM node:22-alpine AS runner
