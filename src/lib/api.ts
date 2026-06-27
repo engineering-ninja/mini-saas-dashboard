@@ -25,6 +25,13 @@ export function unauthorized() {
   return jsonError("Unauthorized", 401);
 }
 
+export function tooManyRequests(retryAfter: number) {
+  return NextResponse.json(
+    { error: "Too many requests. Please try again later." },
+    { status: 429, headers: { "Retry-After": String(retryAfter) } },
+  );
+}
+
 // Maps a ZodError to a { field: message } object for the client to display.
 export function validationError(error: ZodError) {
   const fieldErrors: Record<string, string> = {};

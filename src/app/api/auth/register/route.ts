@@ -1,10 +1,14 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { hashPassword, signAuthToken, setAuthCookie } from "@/lib/auth";
-import { jsonError, validationError, route } from "@/lib/api";
+import { jsonError, validationError, tooManyRequests, route } from "@/lib/api";
 import { registerSchema } from "@/lib/validation";
+import { rateLimit, getClientIp } from "@/lib/rate-limit";
 
 export const POST = route(async (request: Request) => {
+  const limit = rateLimit(`register:${getClientIp(request)}`, 5, 60_000);
+  if (!limit.ok) return tooManyRequests(limit.retryAfter);
+
   let body: unknown;
   try {
     body = await request.json();
