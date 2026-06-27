@@ -8,6 +8,7 @@ import type { ProjectDTO } from "@/lib/projects";
 import { ProjectsToolbar } from "./projects-toolbar";
 import { ProjectsTable } from "./projects-table";
 import { ProjectFormModal } from "./project-form-modal";
+import { Pagination } from "./pagination";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
 import { useDeleteProject } from "@/hooks/use-project-mutations";
@@ -16,6 +17,7 @@ export function ProjectsView() {
   const { toast } = useToast();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<ProjectStatusValue | "">("");
+  const [page, setPage] = useState(1);
   const debouncedSearch = useDebouncedValue(search, 300);
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -23,15 +25,25 @@ export function ProjectsView() {
   const [deleting, setDeleting] = useState<ProjectDTO | null>(null);
   const deleteProject = useDeleteProject();
 
-  const {
-    data: projects,
-    isPending,
-    isError,
-    refetch,
-  } = useProjects({
+  const { data, isPending, isError, refetch } = useProjects({
     status,
     search: debouncedSearch,
+    page,
   });
+
+  const projects = data?.projects ?? [];
+  const total = data?.total ?? 0;
+  const pageSize = data?.pageSize ?? 10;
+
+  // Filter changes reset to the first page.
+  const handleSearchChange = (value: string) => {
+    setSearch(value);
+    setPage(1);
+  };
+  const handleStatusChange = (value: ProjectStatusValue | "") => {
+    setStatus(value);
+    setPage(1);
+  };
 
   const handleAdd = () => {
     setEditing(null);
@@ -61,9 +73,9 @@ export function ProjectsView() {
     <div className="flex flex-col gap-4">
       <ProjectsToolbar
         search={search}
-        onSearchChange={setSearch}
+        onSearchChange={handleSearchChange}
         status={status}
-        onStatusChange={setStatus}
+        onStatusChange={handleStatusChange}
         onAdd={handleAdd}
       />
 
@@ -81,11 +93,14 @@ export function ProjectsView() {
       ) : projects.length === 0 ? (
         <State message={hasFilters ? "No projects match your filters." : "No projects yet."} />
       ) : (
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-3">
           <p className="text-sm text-slate-500">
-            {projects.length} project{projects.length === 1 ? "" : "s"}
+            {total} project{total === 1 ? "" : "s"}
           </p>
           <ProjectsTable projects={projects} onEdit={handleEdit} onDelete={handleDelete} />
+          {total > pageSize ? (
+            <Pagination page={page} pageSize={pageSize} total={total} onPageChange={setPage} />
+          ) : null}
         </div>
       )}
 

@@ -27,8 +27,20 @@ export const GET = route(async (request: Request) => {
     ];
   }
 
-  const projects = await prisma.project.findMany({ where, orderBy: { createdAt: "desc" } });
-  return NextResponse.json({ projects: projects.map(serializeProject) });
+  const page = Math.max(1, Number(searchParams.get("page")) || 1);
+  const pageSize = Math.min(50, Math.max(1, Number(searchParams.get("pageSize")) || 10));
+
+  const [total, projects] = await prisma.$transaction([
+    prisma.project.count({ where }),
+    prisma.project.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    }),
+  ]);
+
+  return NextResponse.json({ projects: projects.map(serializeProject), total, page, pageSize });
 });
 
 export const POST = route(async (request: Request) => {
