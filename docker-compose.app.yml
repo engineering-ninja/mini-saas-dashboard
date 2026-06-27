@@ -1,5 +1,6 @@
-# Full containerized stack: Postgres + the Next.js app.
+# Full containerized stack: Postgres + migrations + the Next.js app.
 # Usage: docker compose -f docker-compose.app.yml up --build
+# Set a strong JWT_SECRET in the environment for production.
 services:
   db:
     image: postgres:16-alpine
@@ -16,16 +17,31 @@ services:
       timeout: 5s
       retries: 5
 
-  app:
-    build: .
-    restart: unless-stopped
+  migrate:
+    build:
+      context: .
+      target: migrator
+    restart: "no"
     depends_on:
       db:
         condition: service_healthy
     environment:
       DATABASE_URL: "postgresql://minisass:minisass@db:5432/minisass?schema=public"
-      JWT_SECRET: "change-me-to-a-long-random-string"
       RUN_SEED: "true"
+
+  app:
+    build:
+      context: .
+      target: runner
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: "postgresql://minisass:minisass@db:5432/minisass?schema=public"
+      JWT_SECRET: "${JWT_SECRET:-change-me-to-a-long-random-string-min-32}"
     ports:
       - "3000:3000"
 
