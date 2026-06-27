@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { requireUser, jsonError, validationError } from "@/lib/api";
+import { requireUser, jsonError, validationError, route } from "@/lib/api";
 import { projectSchema } from "@/lib/validation";
 import { serializeProject } from "@/lib/projects";
 import { PROJECT_STATUSES, type ProjectStatusValue } from "@/lib/constants";
 import type { Prisma } from "@/generated/prisma/client";
 
-export async function GET(request: Request) {
+export const GET = route(async (request: Request) => {
   const { user, response } = await requireUser();
   if (!user) return response;
 
@@ -29,9 +29,9 @@ export async function GET(request: Request) {
 
   const projects = await prisma.project.findMany({ where, orderBy: { createdAt: "desc" } });
   return NextResponse.json({ projects: projects.map(serializeProject) });
-}
+});
 
-export async function POST(request: Request) {
+export const POST = route(async (request: Request) => {
   const { user, response } = await requireUser();
   if (!user) return response;
 
@@ -49,4 +49,4 @@ export async function POST(request: Request) {
     data: { ...parsed.data, ownerId: user.id },
   });
   return NextResponse.json({ project: serializeProject(project) }, { status: 201 });
-}
+});

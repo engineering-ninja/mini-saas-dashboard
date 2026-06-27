@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { requireUser, jsonError, validationError } from "@/lib/api";
+import { requireUser, jsonError, validationError, route } from "@/lib/api";
 import { projectSchema } from "@/lib/validation";
 import { serializeProject } from "@/lib/projects";
 
 type Params = { params: Promise<{ id: string }> };
 
-export async function GET(_request: Request, { params }: Params) {
+export const GET = route(async (_request: Request, { params }: Params) => {
   const { user, response } = await requireUser();
   if (!user) return response;
 
@@ -15,9 +15,9 @@ export async function GET(_request: Request, { params }: Params) {
   if (!project) return jsonError("Project not found", 404);
 
   return NextResponse.json({ project: serializeProject(project) });
-}
+});
 
-export async function PATCH(request: Request, { params }: Params) {
+export const PATCH = route(async (request: Request, { params }: Params) => {
   const { user, response } = await requireUser();
   if (!user) return response;
 
@@ -37,9 +37,9 @@ export async function PATCH(request: Request, { params }: Params) {
 
   const project = await prisma.project.update({ where: { id }, data: parsed.data });
   return NextResponse.json({ project: serializeProject(project) });
-}
+});
 
-export async function DELETE(_request: Request, { params }: Params) {
+export const DELETE = route(async (_request: Request, { params }: Params) => {
   const { user, response } = await requireUser();
   if (!user) return response;
 
@@ -48,4 +48,4 @@ export async function DELETE(_request: Request, { params }: Params) {
   if (count === 0) return jsonError("Project not found", 404);
 
   return new NextResponse(null, { status: 204 });
-}
+});

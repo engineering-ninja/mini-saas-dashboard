@@ -6,6 +6,21 @@ export function jsonError(message: string, status: number, details?: unknown) {
   return NextResponse.json({ error: message, details }, { status });
 }
 
+// Wraps a route handler so unexpected errors return a generic 500 instead of
+// leaking internals, while still being logged server-side.
+export function route<C>(
+  handler: (request: Request, context: C) => Promise<NextResponse> | NextResponse,
+) {
+  return async (request: Request, context: C) => {
+    try {
+      return await handler(request, context);
+    } catch (err) {
+      console.error("Unhandled API error:", err);
+      return jsonError("Internal server error", 500);
+    }
+  };
+}
+
 export function unauthorized() {
   return jsonError("Unauthorized", 401);
 }

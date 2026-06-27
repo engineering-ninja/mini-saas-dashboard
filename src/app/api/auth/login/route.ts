@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { verifyPassword, signAuthToken, setAuthCookie } from "@/lib/auth";
-import { jsonError, validationError } from "@/lib/api";
+import { jsonError, validationError, route } from "@/lib/api";
 import { loginSchema } from "@/lib/validation";
 
-export async function POST(request: Request) {
+export const POST = route(async (request: Request) => {
   let body: unknown;
   try {
     body = await request.json();
@@ -24,4 +24,4 @@ export async function POST(request: Request) {
 
   await setAuthCookie(await signAuthToken(user.id));
   return NextResponse.json({ user: { id: user.id, name: user.name, email: user.email } });
-}
+});
