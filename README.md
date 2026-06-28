@@ -7,7 +7,7 @@ status, paginate, and create / edit / delete — behind JWT authentication.
 
 Built with Next.js (App Router), PostgreSQL, and Prisma.
 
-- **Live demo:** _add your Vercel URL here after deploying_
+- **Live demo:** https://mini-saas-dashboard-nine.vercel.app/login
 - **Demo login:** `demo@example.com` / `demo1234`
 
 ## Features
