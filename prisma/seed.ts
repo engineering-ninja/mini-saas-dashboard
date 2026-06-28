@@ -4,9 +4,10 @@ import bcrypt from "bcryptjs";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../src/generated/prisma/client";
 import { PROJECT_STATUSES, DEMO_USER } from "../src/lib/constants";
+import { pgPoolConfig } from "../src/lib/pg-ssl";
 
 const prisma = new PrismaClient({
-  adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
+  adapter: new PrismaPg(pgPoolConfig(process.env.DATABASE_URL ?? "")),
 });
 
 const PROJECT_COUNT = 24;

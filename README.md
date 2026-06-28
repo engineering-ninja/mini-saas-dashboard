@@ -1,12 +1,14 @@
 # Mini SaaS Dashboard
 
-<!-- Replace OWNER/REPO with your GitHub path after pushing. -->
-<!-- ![CI](https://github.com/OWNER/REPO/actions/workflows/ci.yml/badge.svg) -->
+![CI](https://github.com/engineering-ninja/mini-saas-dashboard/actions/workflows/ci.yml/badge.svg)
 
 A small full-stack SaaS dashboard for managing projects — list, search, filter by
 status, paginate, and create / edit / delete — behind JWT authentication.
 
 Built with Next.js (App Router), PostgreSQL, and Prisma.
+
+- **Live demo:** _add your Vercel URL here after deploying_
+- **Demo login:** `demo@example.com` / `demo1234`
 
 ## Features
 
@@ -231,6 +233,9 @@ Deployment checklist:
 
 > Migrations must use the direct connection (the transaction pooler does not support
 > the DDL/locks they need). The app at runtime should use the pooler.
+>
+> Use Supabase's connection strings as given (they include `sslmode=require`); if you
+> hit an SSL error, ensure `?sslmode=require` is present on the URL.
 
 ## Security
 
@@ -249,3 +254,7 @@ Deployment checklist:
   redirected to `/login` before any data is rendered.
 - The seed script is idempotent — it replaces the demo user's projects on each
   run, so it is safe to run repeatedly.
+
+## License
+
+Released under the MIT License. Built as a take-home assignment.
