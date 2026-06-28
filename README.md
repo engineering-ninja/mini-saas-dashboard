@@ -1,7 +1,10 @@
 # Mini SaaS Dashboard
 
+<!-- Replace OWNER/REPO with your GitHub path after pushing. -->
+<!-- ![CI](https://github.com/OWNER/REPO/actions/workflows/ci.yml/badge.svg) -->
+
 A small full-stack SaaS dashboard for managing projects — list, search, filter by
-status, and create / edit / delete — behind JWT authentication.
+status, paginate, and create / edit / delete — behind JWT authentication.
 
 Built with Next.js (App Router), PostgreSQL, and Prisma.
 
@@ -9,7 +12,7 @@ Built with Next.js (App Router), PostgreSQL, and Prisma.
 
 - **Projects CRUD** with fields: name, status (`Active` / `On hold` / `Completed`),
   deadline, assigned team member, and budget
-- **Search** by name or assignee and **filter** by status
+- **Search** by name or assignee, **filter** by status, and **server-side pagination**
 - **Responsive UI** — table on desktop, cards on mobile
 - **Add / edit modal** with client- and server-side validation
 - **Delete** with a confirmation dialog and toast feedback
@@ -17,7 +20,8 @@ Built with Next.js (App Router), PostgreSQL, and Prisma.
   projects are scoped to the signed-in user
 - **REST API** with owner authorization on every endpoint
 - **Seed script** generating a demo user and 24 sample projects
-- **Dockerized** — run the whole stack (app + database) with one command
+- **Production-ready**: fail-fast env validation, security headers, rate-limited
+  auth, generic error handling, a health check, and a non-root Docker image
 
 ## Tech stack
 
@@ -123,15 +127,26 @@ signed-in user's projects.
 | POST   | `/api/auth/logout`   | Sign out (clears the cookie)       |
 | GET    | `/api/auth/me`       | Current user, or 401 if signed out |
 
+Auth endpoints are rate-limited per IP (login 10/min, register 5/min) and return
+`429` with a `Retry-After` header when exceeded.
+
 ### Projects
 
-| Method | Endpoint            | Description                                      |
-| ------ | ------------------- | ------------------------------------------------ |
-| GET    | `/api/projects`     | List projects; `?status=` and `?search=` filters |
-| POST   | `/api/projects`     | Create a project                                 |
-| GET    | `/api/projects/:id` | Get one project                                  |
-| PATCH  | `/api/projects/:id` | Update a project                                 |
-| DELETE | `/api/projects/:id` | Delete a project                                 |
+| Method | Endpoint            | Description                                               |
+| ------ | ------------------- | --------------------------------------------------------- |
+| GET    | `/api/projects`     | List projects; `?status=`, `?search=`, `?page=` (10/page) |
+| POST   | `/api/projects`     | Create a project                                          |
+| GET    | `/api/projects/:id` | Get one project                                           |
+| PATCH  | `/api/projects/:id` | Update a project                                          |
+| DELETE | `/api/projects/:id` | Delete a project                                          |
+
+The list endpoint returns `{ projects, total, page, pageSize }`.
+
+### Health
+
+| Method | Endpoint      | Description                                 |
+| ------ | ------------- | ------------------------------------------- |
+| GET    | `/api/health` | Readiness probe; `200` ok, `503` if DB down |
 
 Example:
 
@@ -141,8 +156,8 @@ curl -c cookie.txt -X POST http://localhost:3000/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"demo@example.com","password":"demo1234"}'
 
-# List active projects matching "platform"
-curl -b cookie.txt "http://localhost:3000/api/projects?status=ACTIVE&search=platform"
+# List active projects matching "platform", page 1
+curl -b cookie.txt "http://localhost:3000/api/projects?status=ACTIVE&search=platform&page=1"
 ```
 
 ## Project structure
@@ -164,10 +179,67 @@ src/
     query-provider.tsx   # React Query provider
   hooks/                 # Data fetching and mutations
   lib/                   # db, auth, validation, api helpers, formatting
-Dockerfile               # Multi-stage build
+.github/workflows/      # CI (lint, typecheck, build)
+Dockerfile               # Multi-stage build (standalone runner + migrator)
 docker-compose.yml       # Postgres for local dev
-docker-compose.app.yml   # Full stack (Postgres + app)
+docker-compose.app.yml   # Full stack (db + migrate + app)
 ```
+
+## Production deployment
+
+The production stack is `docker-compose.app.yml`, which runs three services:
+
+1. `db` — PostgreSQL
+2. `migrate` — runs `prisma migrate deploy` (and an optional seed) once, then exits
+3. `app` — the Next.js standalone server (runs as a non-root user, with a
+   container health check on `/api/health`)
+
+```bash
+# Set a strong secret, then build and start the stack
+export JWT_SECRET="$(openssl rand -base64 32)"
+docker compose -f docker-compose.app.yml up --build -d
+```
+
+Deployment checklist:
+
+- **`JWT_SECRET`** — set a strong value (≥32 chars); the app refuses to start otherwise.
+- **HTTPS** — run behind a TLS-terminating reverse proxy (e.g. Nginx, Caddy, a load
+  balancer). Auth cookies are `Secure` in production and the app sends HSTS.
+- **Seeding** — set `RUN_SEED=false` (or remove it) on the `migrate` service so a
+  production database is not populated with demo data.
+- **Scaling** — the auth rate limiter is in-memory; back it with Redis if you run
+  multiple replicas.
+
+## Deploy to Vercel + Supabase
+
+1. **Create a Supabase project** and open **Project Settings → Database**. Copy two
+   connection strings:
+   - **Transaction pooler** (port `6543`) — for the app at runtime (`DATABASE_URL`).
+   - **Direct connection** (port `5432`) — for running migrations from your machine.
+2. **Migrate and seed the hosted database** from your machine using the direct URL:
+   ```bash
+   DATABASE_URL="<direct-connection-string>" npm run db:deploy
+   DATABASE_URL="<direct-connection-string>" npm run db:seed   # optional demo data
+   ```
+3. **Import the GitHub repo into Vercel** and add Environment Variables (Production
+   and Preview):
+   - `DATABASE_URL` = the **transaction pooler** string (port `6543`)
+   - `JWT_SECRET` = a strong value, e.g. `openssl rand -base64 32`
+4. **Deploy.** Vercel runs `npm install` (which generates the Prisma client) and
+   `next build`. Set the env vars _before_ the first build, since startup validation
+   requires them.
+
+> Migrations must use the direct connection (the transaction pooler does not support
+> the DDL/locks they need). The app at runtime should use the pooler.
+
+## Security
+
+- Passwords hashed with bcrypt; JWT stored in an httpOnly, same-site cookie.
+- Fail-fast environment validation (`DATABASE_URL`, `JWT_SECRET`) at startup.
+- Security headers on every response: CSP, HSTS, `X-Frame-Options`,
+  `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`.
+- Rate-limited auth endpoints; unexpected errors return generic 500s (no leakage).
+- Every project endpoint authorizes by owner, so users only see their own data.
 
 ## Notes
 
